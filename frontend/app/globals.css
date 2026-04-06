@@ -1,0 +1,1127 @@
+:root {
+  --bg: #f6f8fb;
+  --panel: rgba(255, 255, 255, 0.92);
+  --panel-strong: #ffffff;
+  --panel-soft: #f8fafc;
+  --text: #18212f;
+  --muted: #6b7280;
+  --line: #dbe4ee;
+  --line-strong: #cfd8e3;
+  --brand: #0f766e;
+  --blue: #2563eb;
+  --blue-soft: #dbeafe;
+  --warn: #b45309;
+  --warn-soft: #fef3c7;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.05), transparent 24%),
+    linear-gradient(180deg, #fbfcfe 0%, var(--bg) 100%);
+  color: var(--text);
+  font-family: "Segoe UI", "Noto Sans KR", sans-serif;
+}
+
+body {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.shell {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 28px 20px 72px;
+}
+
+.loginShell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.loginCard {
+  width: 100%;
+  max-width: 720px;
+}
+
+.loginTitle {
+  font-size: 1.8rem;
+}
+
+.loginUserGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.loginUserCard {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.loginUserCard:hover,
+.loginUserCard.active {
+  border-color: var(--brand);
+  background: #f7fcfb;
+}
+
+.loginForm {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.loginHint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.hero {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.heroLayout {
+  grid-template-columns: 1.8fr 0.95fr;
+}
+
+.heroCard,
+.panel {
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(219, 228, 238, 0.9);
+  border-radius: 8px;
+}
+
+.heroCard,
+.panel,
+.summaryListCard,
+.commentItem,
+.metricCard,
+.insightCard,
+.tablePanel,
+.miniStat,
+.recommendationCard,
+.unfollowCard {
+  box-shadow: none;
+}
+
+.heroCard {
+  padding: 28px;
+}
+
+.heroTopRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.modeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.logoutAnchor {
+  margin-left: auto;
+}
+
+.heroTitle {
+  margin: 0;
+  font-size: 2.2rem;
+  line-height: 1.15;
+  font-weight: 800;
+}
+
+.profileRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.profileLabel {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.profileName {
+  font-size: 1.08rem;
+  font-weight: 700;
+}
+
+.heroText {
+  margin: 16px 0 0;
+  max-width: 680px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.ctaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.ctaCard {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 18px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.ctaCard:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  background: #fcfdff;
+}
+
+.ctaLabel {
+  display: block;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.ctaValue {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.7rem;
+  font-weight: 800;
+}
+
+.heroSide {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sectionTitle {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.muted {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.dailyMetricGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.miniStatBody {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.miniStat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+}
+
+.miniStatButton {
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.miniStatButton:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  background: #fcfdff;
+}
+
+.miniStatButton.selected {
+  border-color: var(--brand);
+  background: #f7fcfb;
+}
+
+.miniStat strong {
+  font-size: 1.1rem;
+}
+
+.miniStatLabel {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.dailyAvatarRow {
+  display: flex;
+  align-items: center;
+}
+
+.dailyAvatarButton,
+.summaryProfileButton,
+.summaryActionCard {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.dailyAvatarButton {
+  display: inline-flex;
+  margin-right: -8px;
+}
+
+.chipRow,
+.pillRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summaryChip,
+.badge,
+.metricPill,
+.tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.summaryChip {
+  border: 1px solid transparent;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: transform 0.16s ease, filter 0.16s ease, opacity 0.16s ease;
+}
+
+.summaryChip:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
+}
+
+.summaryChip.keep,
+.badge.keep {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.summaryChip.review,
+.badge.review {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.summaryChip.unfollow,
+.badge.unfollow {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.badge {
+  padding: 8px 12px;
+  font-size: 0.84rem;
+}
+
+.metricPill {
+  padding: 7px 11px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+.tag {
+  padding: 7px 11px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.9rem;
+}
+
+.summaryPanel {
+  padding: 20px;
+  margin-bottom: 18px;
+}
+
+.toolPanel {
+  margin-bottom: 18px;
+}
+
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.toolCard {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  padding: 16px;
+}
+
+.toolCardWide {
+  grid-column: span 1;
+}
+
+.dailyActivitySection {
+  padding: 20px;
+  margin-bottom: 18px;
+}
+
+.dailyActivityGrid {
+  min-height: 248px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.dailyActivityCard {
+  width: 100%;
+  min-height: 168px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.dailyActivityCard:hover {
+  border-color: var(--line-strong);
+  background: #fcfdff;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.summaryList {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summaryListCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+}
+
+.summaryListMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.summaryActionCard {
+  width: 100%;
+  text-align: left;
+}
+
+.rankList {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.rankItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.92rem;
+}
+
+.rankProfileButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.rankNumber,
+.rankDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.rankDot {
+  width: 8px;
+  height: 8px;
+  background: #cbd5e1;
+}
+
+.rankName {
+  color: var(--text);
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin: 16px 0 18px;
+  flex-wrap: wrap;
+}
+
+.tabButton {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 12px 18px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: all 0.18s ease;
+}
+
+.tabButton:hover,
+.tabButton.active {
+  background: var(--brand);
+  color: #ffffff;
+  border-color: var(--brand);
+}
+
+.statusBanner {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #ecfeff;
+  color: #0f766e;
+  border: 1px solid #a5f3fc;
+}
+
+.panel {
+  padding: 20px;
+}
+
+.dashboardPanel {
+  padding: 22px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.relationshipToolbar,
+.recommendationToolbar {
+  margin-bottom: 18px;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.input,
+.button {
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  padding: 12px 14px;
+}
+
+.input {
+  min-width: 220px;
+}
+
+.button {
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+  transform: none;
+}
+
+.button.primary {
+  background: var(--brand);
+  color: #ffffff;
+  border-color: var(--brand);
+}
+
+.wideButton {
+  min-width: 128px;
+}
+
+.timeFilterGroup,
+.miniTabs,
+.segmentedFilters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filterButton,
+.miniTab,
+.segmentButton {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.filterButton,
+.segmentButton {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.miniTab {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  min-width: 82px;
+  justify-content: center;
+}
+
+.filterButton.active,
+.miniTab.active,
+.segmentButton.active {
+  background: var(--brand);
+  color: #ffffff;
+  border-color: var(--brand);
+}
+
+.segmentButton.keep.active {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.segmentButton.review.active {
+  background: var(--warn);
+  border-color: var(--warn);
+}
+
+.segmentButton.unfollow.active {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.insightCards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.insightCard,
+.cleanCard,
+.metricCard {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+}
+
+.insightCard {
+  padding: 18px;
+}
+
+.insightLabel {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.insightCard strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 1.5rem;
+}
+
+.commentsPanel,
+.tablePanel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  padding: 18px;
+}
+
+.commentsPanel {
+  margin-bottom: 18px;
+}
+
+.recommendationIntroPanel {
+  margin-bottom: 16px;
+}
+
+.commentsHeader {
+  margin-bottom: 12px;
+}
+
+.commentFeedGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.commentItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.commentLinkCard {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.commentLinkCard:hover {
+  border-color: var(--line-strong);
+  background: #fcfdff;
+}
+
+.commentEmpty {
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 20px;
+  color: var(--muted);
+}
+
+.commentTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.commentText {
+  margin: 10px 0 8px;
+  line-height: 1.6;
+}
+
+.tableHeaderBlock {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.chartToolbar {
+  align-items: center;
+}
+
+.chartSearch {
+  flex: 1;
+  min-width: 260px;
+}
+
+.compactSearch {
+  max-width: 220px;
+}
+
+.tableToolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+th,
+td {
+  padding: 15px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+th {
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.relationshipTable .col-account {
+  width: 280px;
+}
+
+.relationshipTable .col-status {
+  width: 132px;
+}
+
+.relationshipTable .col-metric {
+  width: 96px;
+}
+
+.relationshipTable .col-recent {
+  width: 132px;
+}
+
+.relationshipTable .col-date {
+  width: 128px;
+}
+
+.relationshipTable th:not(:first-child),
+.relationshipTable td:not(:first-child) {
+  text-align: center;
+}
+
+.relationshipTable td:first-child,
+.relationshipTable th:first-child {
+  text-align: left;
+}
+
+.tableAccount {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tableProfileButton {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}
+
+.tableProfileMeta {
+  min-width: 0;
+}
+
+.tableAccount strong,
+.summaryListMeta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recommendationList {
+  display: grid;
+  gap: 14px;
+}
+
+.recommendationFilterPanel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.filterField {
+  display: grid;
+  gap: 8px;
+}
+
+.fieldLabel {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.recommendationInput {
+  width: 100%;
+}
+
+.recommendationCard,
+.unfollowCard {
+  padding: 18px;
+}
+
+.recommendationHeader,
+.unfollowHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.profileBlock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recommendationActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.recommendationTags {
+  margin-top: 16px;
+}
+
+.recommendationStatusRow {
+  margin-top: 14px;
+}
+
+.recommendationMetrics {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.secondaryActions {
+  margin-top: 16px;
+}
+
+.metricCard {
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.unfollowGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.unfollowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 10px;
+}
+
+.unfollowActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.miniDangerButton {
+  border: 1px solid #f5b5b5;
+  background: #fff4f4;
+  color: var(--danger);
+  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 50;
+}
+
+.confirmModal {
+  width: min(520px, 100%);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.modalProfileRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.modalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #dbeafe;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-sm {
+  width: 38px;
+  height: 38px;
+  font-size: 0.8rem;
+}
+
+.avatar-md {
+  width: 46px;
+  height: 46px;
+  font-size: 0.92rem;
+}
+
+.avatar-lg {
+  width: 56px;
+  height: 56px;
+  font-size: 1rem;
+}
+
+@media (max-width: 1180px) {
+  .heroLayout,
+  .commentFeedGrid,
+  .summaryList,
+  .dailyActivityGrid,
+  .recommendationMetrics,
+  .unfollowGrid,
+  .toolGrid,
+  .ctaGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .recommendationFilterPanel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .heroLayout,
+  .ctaGrid,
+  .summaryList,
+  .dailyActivityGrid,
+  .commentFeedGrid,
+  .insightCards,
+  .recommendationMetrics,
+  .unfollowGrid,
+  .toolGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .recommendationHeader,
+  .unfollowHeader,
+  .commentTop,
+  .tableHeaderBlock {
+    flex-direction: column;
+  }
+
+  .shell {
+    padding: 20px 14px 56px;
+  }
+
+  .heroTitle {
+    font-size: 1.8rem;
+  }
+
+  .loginUserGrid {
+    grid-template-columns: 1fr;
+  }
+}

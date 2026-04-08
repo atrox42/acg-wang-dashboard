@@ -19,6 +19,7 @@ interface InstagramTokenResponse {
 
 interface InstagramProfileResponse {
   id?: string;
+  user_id?: string | number;
   username?: string;
   name?: string;
   profile_picture_url?: string;
@@ -85,8 +86,8 @@ export async function GET(request: Request) {
     return redirectToLogin("oauth", config.redirectUri);
   }
 
-  const profileUrl = new URL("https://graph.instagram.com/me");
-  profileUrl.searchParams.set("fields", "id,username");
+  const profileUrl = new URL("https://graph.instagram.com/v22.0/me");
+  profileUrl.searchParams.set("fields", "user_id,username,name,profile_picture_url");
   profileUrl.searchParams.set("access_token", tokenPayload.access_token);
 
   const profileResponse = await fetch(profileUrl.toString(), {
@@ -109,7 +110,7 @@ export async function GET(request: Request) {
   }
 
   const sessionUser = createInstagramSessionUser({
-    id: profile.id || String(tokenPayload.user_id || ""),
+    id: String(profile.user_id || profile.id || tokenPayload.user_id || ""),
     username: profile.username,
     name: profile.name,
     profile_picture_url: profile.profile_picture_url

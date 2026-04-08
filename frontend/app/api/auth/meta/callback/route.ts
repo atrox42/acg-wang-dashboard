@@ -86,8 +86,8 @@ export async function GET(request: Request) {
     return redirectToLogin("oauth", config.redirectUri);
   }
 
-  const profileUrl = new URL("https://graph.instagram.com/v22.0/me");
-  profileUrl.searchParams.set("fields", "user_id,username,name,profile_picture_url");
+  const profileUrl = new URL("https://graph.instagram.com/me");
+  profileUrl.searchParams.set("fields", "id,user_id,username,account_type");
   profileUrl.searchParams.set("access_token", tokenPayload.access_token);
 
   const profileResponse = await fetch(profileUrl.toString(), {

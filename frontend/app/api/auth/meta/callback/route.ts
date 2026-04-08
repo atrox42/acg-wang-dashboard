@@ -84,33 +84,44 @@ export async function GET(request: Request) {
     return redirectToLogin("oauth", config.redirectUri);
   }
 
-  const profileUrl = new URL("https://graph.instagram.com/me");
-  profileUrl.searchParams.set("fields", "user_id,username");
-  profileUrl.searchParams.set("access_token", tokenPayload.access_token);
+  const fallbackInstagramId = String(tokenPayload.user_id || "");
+  if (!fallbackInstagramId) {
+    return redirectToLogin("profile", config.redirectUri, "Missing Instagram user id in token response");
+  }
 
-  const profileResponse = await fetch(profileUrl.toString(), {
-    cache: "no-store"
-  });
+  // Instagram Login is already proving account ownership here. If profile lookup
+  // fails for a given token shape, still let the user into the dashboard with a
+  // stable placeholder handle derived from the Instagram user id.
+  let profile: InstagramProfileResponse | null = null;
+  try {
+    const profileUrl = new URL("https://graph.instagram.com/me");
+    profileUrl.searchParams.set("fields", "user_id,username");
+    profileUrl.searchParams.set("access_token", tokenPayload.access_token);
 
-  if (!profileResponse.ok) {
-    const body = await profileResponse.text();
-    console.error("Instagram profile fetch failed", {
-      status: profileResponse.status,
-      statusText: profileResponse.statusText,
-      body
+    const profileResponse = await fetch(profileUrl.toString(), {
+      cache: "no-store"
     });
-    return redirectToLogin("profile", config.redirectUri, body);
+
+    if (profileResponse.ok) {
+      profile = (await profileResponse.json()) as InstagramProfileResponse;
+    } else {
+      const body = await profileResponse.text();
+      console.error("Instagram profile fetch failed", {
+        status: profileResponse.status,
+        statusText: profileResponse.statusText,
+        body
+      });
+    }
+  } catch (error) {
+    console.error("Instagram profile request threw", error);
   }
 
-  const profile = (await profileResponse.json()) as InstagramProfileResponse;
-  if (!profile.username) {
-    return redirectToLogin("profile", config.redirectUri);
-  }
+  const resolvedUsername = profile?.username || `instagram-${fallbackInstagramId}`;
 
   const sessionUser = createInstagramSessionUser({
-    id: String(profile.user_id || profile.id || tokenPayload.user_id || ""),
-    username: profile.username,
-    name: profile.username
+    id: String(profile?.user_id || profile?.id || fallbackInstagramId),
+    username: resolvedUsername,
+    name: profile?.username || "Instagram Connected"
   });
 
   cookies().set({

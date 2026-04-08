@@ -23,7 +23,7 @@ services:
       - key: SCHEDULER_ENABLED
         value: "true"
       - key: MOCK_DATA_MODE
-        value: "true"
+        value: "false"
       - key: SUPABASE_DB_URL
         fromDatabase:
           name: acg-wang-db

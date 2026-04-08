@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router
 from app.core.config import settings
+from app.db.database import initialize_database
 from app.tasks.recalculate import recalculate_daily_scores
 
 scheduler = BackgroundScheduler(timezone="Asia/Seoul")
@@ -13,6 +14,7 @@ scheduler = BackgroundScheduler(timezone="Asia/Seoul")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    initialize_database()
     if settings.scheduler_enabled:
         scheduler.add_job(
             recalculate_daily_scores,

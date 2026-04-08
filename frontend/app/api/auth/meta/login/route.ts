@@ -26,19 +26,14 @@ export async function GET() {
     maxAge: 60 * 10
   });
 
-  const authUrl = config.loginUrl
-    ? new URL(config.loginUrl)
-    : new URL("https://www.instagram.com/oauth/authorize");
+  const authUrl = new URL("https://www.instagram.com/oauth/authorize");
+  authUrl.searchParams.set("client_id", config.appId);
+  authUrl.searchParams.set("redirect_uri", config.redirectUri);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", config.scopes.join(","));
+  authUrl.searchParams.set("force_reauth", "true");
 
-  if (!config.loginUrl) {
-    authUrl.searchParams.set("client_id", config.appId);
-    authUrl.searchParams.set("redirect_uri", config.redirectUri);
-    authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("scope", config.scopes.join(","));
-    authUrl.searchParams.set("force_reauth", "true");
-  }
-
-  const redirectUriUsed = authUrl.searchParams.get("redirect_uri") || config.redirectUri;
+  const redirectUriUsed = config.redirectUri;
 
   authUrl.searchParams.set("state", state);
 

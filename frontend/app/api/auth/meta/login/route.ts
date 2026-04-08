@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import {
   createOauthState,
   getInstagramAuthConfig,
+  getOauthRedirectUriCookieName,
   getOauthStateCookieName
 } from "@/lib/auth";
 
@@ -37,7 +38,20 @@ export async function GET() {
     authUrl.searchParams.set("force_reauth", "true");
   }
 
+  const redirectUriUsed = authUrl.searchParams.get("redirect_uri") || config.redirectUri;
+
   authUrl.searchParams.set("state", state);
 
-  return NextResponse.redirect(authUrl);
+  const response = NextResponse.redirect(authUrl);
+  response.cookies.set({
+    name: getOauthRedirectUriCookieName(),
+    value: redirectUriUsed,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 10
+  });
+
+  return response;
 }

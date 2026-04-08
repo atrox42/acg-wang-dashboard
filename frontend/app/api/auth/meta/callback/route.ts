@@ -5,6 +5,7 @@ import {
   createInstagramSessionUser,
   createSessionToken,
   getInstagramAuthConfig,
+  getOauthRedirectUriCookieName,
   getOauthStateCookieName,
   getSessionCookieName,
   getSessionTtlSeconds
@@ -48,9 +49,12 @@ export async function GET(request: Request) {
   }
 
   const cookieState = cookies().get(getOauthStateCookieName())?.value;
+  const cookieRedirectUri = cookies().get(getOauthRedirectUriCookieName())?.value;
   if (!code || !state || !cookieState || state !== cookieState) {
     return redirectToLogin("state", config.redirectUri);
   }
+
+  const redirectUriForExchange = cookieRedirectUri || config.redirectUri;
 
   const tokenResponse = await fetch("https://api.instagram.com/oauth/access_token", {
     method: "POST",
@@ -61,7 +65,7 @@ export async function GET(request: Request) {
       client_id: config.appId,
       client_secret: config.appSecret,
       grant_type: "authorization_code",
-      redirect_uri: config.redirectUri,
+      redirect_uri: redirectUriForExchange,
       code
     })
   });
@@ -123,6 +127,16 @@ export async function GET(request: Request) {
 
   cookies().set({
     name: getOauthStateCookieName(),
+    value: "",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0
+  });
+
+  cookies().set({
+    name: getOauthRedirectUriCookieName(),
     value: "",
     httpOnly: true,
     sameSite: "lax",

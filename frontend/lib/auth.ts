@@ -4,6 +4,7 @@ import type { AppUserProfile } from "@/lib/types";
 
 const SESSION_COOKIE_NAME = "ig_cleanup_session";
 const OAUTH_STATE_COOKIE_NAME = "ig_cleanup_oauth_state";
+const OAUTH_REDIRECT_URI_COOKIE_NAME = "ig_cleanup_oauth_redirect_uri";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 
 export interface SessionUser {
@@ -169,6 +170,10 @@ export function getSessionCookieName() {
 
 export function getOauthStateCookieName() {
   return OAUTH_STATE_COOKIE_NAME;
+}
+
+export function getOauthRedirectUriCookieName() {
+  return OAUTH_REDIRECT_URI_COOKIE_NAME;
 }
 
 export function getSessionTtlSeconds() {

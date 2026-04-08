@@ -13,7 +13,7 @@ import { LoginForm } from "./ui";
 export default function LoginPage({
   searchParams
 }: {
-  searchParams?: { error?: string };
+  searchParams?: { error?: string; detail?: string };
 }) {
   const token = cookies().get(getSessionCookieName())?.value;
   const session = verifySessionToken(token);
@@ -28,6 +28,7 @@ export default function LoginPage({
       instagramEnabled={isInstagramAuthConfigured()}
       legacyEnabled={isLegacyLoginEnabled()}
       errorCode={searchParams?.error}
+      errorDetail={searchParams?.detail}
     />
   );
 }

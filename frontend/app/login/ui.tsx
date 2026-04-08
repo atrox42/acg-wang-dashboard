@@ -59,12 +59,14 @@ export function LoginForm({
   users,
   instagramEnabled,
   legacyEnabled,
-  errorCode
+  errorCode,
+  errorDetail
 }: {
   users: AppUserProfile[];
   instagramEnabled: boolean;
   legacyEnabled: boolean;
   errorCode?: string;
+  errorDetail?: string;
 }) {
   const router = useRouter();
   const [username, setUsername] = useState(users[0]?.username ?? "");
@@ -126,6 +128,11 @@ export function LoginForm({
         {error ? (
           <p className="muted" style={{ color: "#b91c1c", marginTop: 16 }}>
             {error}
+          </p>
+        ) : null}
+        {errorDetail ? (
+          <p className="muted" style={{ color: "#b91c1c", marginTop: 8, wordBreak: "break-word" }}>
+            {errorDetail}
           </p>
         ) : null}
 

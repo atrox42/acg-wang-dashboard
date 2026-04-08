@@ -23,9 +23,13 @@ interface InstagramProfileResponse {
   profile_picture_url?: string;
 }
 
-function redirectToLogin(error: string, redirectUri?: string) {
+function redirectToLogin(error: string, redirectUri?: string, detail?: string) {
   const fallbackOrigin = redirectUri ? new URL(redirectUri).origin : "http://localhost:3000";
-  return NextResponse.redirect(new URL(`/login?error=${error}`, fallbackOrigin));
+  const target = new URL(`/login?error=${error}`, fallbackOrigin);
+  if (detail) {
+    target.searchParams.set("detail", detail.slice(0, 240));
+  }
+  return NextResponse.redirect(target);
 }
 
 export async function GET(request: Request) {
@@ -63,12 +67,13 @@ export async function GET(request: Request) {
   });
 
   if (!tokenResponse.ok) {
+    const body = await tokenResponse.text();
     console.error("Instagram token exchange failed", {
       status: tokenResponse.status,
       statusText: tokenResponse.statusText,
-      body: await tokenResponse.text()
+      body
     });
-    return redirectToLogin("oauth", config.redirectUri);
+    return redirectToLogin("oauth", config.redirectUri, body);
   }
 
   const tokenPayload = (await tokenResponse.json()) as InstagramTokenResponse;
@@ -85,12 +90,13 @@ export async function GET(request: Request) {
   });
 
   if (!profileResponse.ok) {
+    const body = await profileResponse.text();
     console.error("Instagram profile fetch failed", {
       status: profileResponse.status,
       statusText: profileResponse.statusText,
-      body: await profileResponse.text()
+      body
     });
-    return redirectToLogin("profile", config.redirectUri);
+    return redirectToLogin("profile", config.redirectUri, body);
   }
 
   const profile = (await profileResponse.json()) as InstagramProfileResponse;

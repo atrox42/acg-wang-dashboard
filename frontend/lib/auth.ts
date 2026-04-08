@@ -182,8 +182,11 @@ export function isLegacyLoginEnabled() {
 export function getInstagramAuthConfig(): InstagramAuthConfig | null {
   const rawAppId = process.env.INSTAGRAM_CLIENT_ID?.trim();
   const appSecret = process.env.INSTAGRAM_CLIENT_SECRET?.trim();
-  const redirectUri = process.env.INSTAGRAM_REDIRECT_URI?.trim();
   const loginUrl = process.env.INSTAGRAM_LOGIN_URL?.trim();
+  const loginUrlRedirectUri = loginUrl
+    ? new URL(loginUrl).searchParams.get("redirect_uri")?.trim() || ""
+    : "";
+  const redirectUri = loginUrlRedirectUri || process.env.INSTAGRAM_REDIRECT_URI?.trim() || "";
   const appId =
     rawAppId ||
     (loginUrl ? new URL(loginUrl).searchParams.get("client_id")?.trim() || "" : "");

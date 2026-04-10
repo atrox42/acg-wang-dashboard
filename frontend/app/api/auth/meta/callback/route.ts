@@ -73,30 +73,18 @@ async function tryFetchInstagramProfile(url: URL): Promise<InstagramProfileRespo
 
 async function resolveInstagramProfile(accessToken: string, fallbackInstagramId: string) {
   const candidates: Array<{ endpoint: string; fields: string }> = [
-    {
-      endpoint: "https://graph.instagram.com/me",
-      fields: "id,username,account_type,media_count"
-    },
-    {
-      endpoint: "https://graph.instagram.com/v23.0/me",
-      fields: "id,username,account_type,media_count"
-    },
-    {
-      endpoint: `https://graph.instagram.com/${fallbackInstagramId}`,
-      fields: "id,username,account_type,media_count"
-    },
-    {
-      endpoint: `https://graph.instagram.com/v23.0/${fallbackInstagramId}`,
-      fields: "id,username,account_type,media_count"
-    },
-    {
-      endpoint: `https://graph.facebook.com/${fallbackInstagramId}`,
-      fields: "id,username"
-    },
-    {
-      endpoint: `https://graph.facebook.com/v23.0/${fallbackInstagramId}`,
-      fields: "id,username"
-    }
+    { endpoint: "https://graph.instagram.com/me", fields: "username" },
+    { endpoint: "https://graph.instagram.com/v23.0/me", fields: "username" },
+    { endpoint: "https://graph.instagram.com/me", fields: "user_id" },
+    { endpoint: "https://graph.instagram.com/v23.0/me", fields: "user_id" },
+    { endpoint: "https://graph.instagram.com/me", fields: "id" },
+    { endpoint: "https://graph.instagram.com/v23.0/me", fields: "id" },
+    { endpoint: "https://graph.instagram.com/me", fields: "media_count" },
+    { endpoint: "https://graph.instagram.com/v23.0/me", fields: "media_count" },
+    { endpoint: `https://graph.instagram.com/${fallbackInstagramId}`, fields: "username" },
+    { endpoint: `https://graph.instagram.com/v23.0/${fallbackInstagramId}`, fields: "username" },
+    { endpoint: `https://graph.facebook.com/${fallbackInstagramId}`, fields: "username" },
+    { endpoint: `https://graph.facebook.com/v23.0/${fallbackInstagramId}`, fields: "username" }
   ];
 
   let merged: InstagramProfileResponse = {};
@@ -113,7 +101,7 @@ async function resolveInstagramProfile(accessToken: string, fallbackInstagramId:
       ...profile
     };
 
-    if (merged.username && (merged.user_id || merged.id)) {
+    if (merged.username) {
       return merged;
     }
   }

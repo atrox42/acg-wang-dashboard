@@ -505,13 +505,49 @@ def sync_connected_profile(
     }
 
 
-def build_live_dashboard_payload(db: Session, days: int, username: str | None = None) -> dict:
+def _find_connected_account(
+    db: Session,
+    *,
+    username: str | None = None,
+    instagram_user_id: str | None = None,
+) -> Account | None:
     normalized_username = username.strip().lower().lstrip("@") if username else None
-    connected_account = None
     if normalized_username:
-        connected_account = db.execute(
+        account = db.execute(
             select(Account).where(Account.username == normalized_username)
         ).scalar_one_or_none()
+        if account is not None:
+            return account
+
+    normalized_instagram_user_id = (
+        str(instagram_user_id).strip()
+        if instagram_user_id is not None and str(instagram_user_id).strip()
+        else None
+    )
+    if not normalized_instagram_user_id:
+        return None
+
+    accounts = db.execute(select(Account).where(Account.metadata_json.is_not(None))).scalars().all()
+    for account in accounts:
+        metadata = account.metadata_json or {}
+        if str(metadata.get("instagram_user_id") or "").strip() == normalized_instagram_user_id:
+            return account
+
+    return None
+
+
+def build_live_dashboard_payload(
+    db: Session,
+    days: int,
+    username: str | None = None,
+    instagram_user_id: str | None = None,
+) -> dict:
+    normalized_username = username.strip().lower().lstrip("@") if username else None
+    connected_account = _find_connected_account(
+        db,
+        username=normalized_username,
+        instagram_user_id=instagram_user_id,
+    )
 
     latest_follower = _latest_snapshot(db, "followers")
     latest_following = _latest_snapshot(db, "following")

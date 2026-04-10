@@ -365,6 +365,7 @@ function DailyActivityCard({
 
 export function Dashboard({
   username,
+  instagramUserId,
   displayName,
   preferenceSummary,
   recommendationKeywords,
@@ -372,6 +373,7 @@ export function Dashboard({
   followingCount
 }: {
   username: string;
+  instagramUserId?: string;
   displayName: string;
   preferenceSummary: string;
   recommendationKeywords: string[];
@@ -403,7 +405,7 @@ export function Dashboard({
   const [muteUnfollowPromptToday, setMuteUnfollowPromptToday] = useState(false);
 
   async function refreshDashboard() {
-    const data = await fetchDashboardData(days, username);
+    const data = await fetchDashboardData(days, username, instagramUserId);
     setPayload(data);
   }
 
@@ -413,7 +415,7 @@ export function Dashboard({
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchDashboardData(days, username);
+        const data = await fetchDashboardData(days, username, instagramUserId);
         if (!cancelled) setPayload(data);
       } catch (loadError) {
         if (!cancelled) setError(loadError instanceof Error ? loadError.message : "Unexpected error");
@@ -425,7 +427,7 @@ export function Dashboard({
     return () => {
       cancelled = true;
     };
-  }, [days, username]);
+  }, [days, instagramUserId, username]);
 
   useEffect(() => {
     if (!payload) {

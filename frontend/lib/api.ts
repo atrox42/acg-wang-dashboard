@@ -80,7 +80,11 @@ function normalizeDashboardPayload(payload: Record<string, unknown>): DashboardP
   };
 }
 
-export async function fetchDashboardData(days: WindowDays, username?: string): Promise<DashboardPayload> {
+export async function fetchDashboardData(
+  days: WindowDays,
+  username?: string,
+  instagramUserId?: string
+): Promise<DashboardPayload> {
   if (MOCK_MODE) {
     return getMockDashboardData(username);
   }
@@ -88,6 +92,9 @@ export async function fetchDashboardData(days: WindowDays, username?: string): P
   const searchParams = new URLSearchParams({ days: String(days) });
   if (username) {
     searchParams.set("username", username);
+  }
+  if (instagramUserId) {
+    searchParams.set("instagram_user_id", instagramUserId);
   }
 
   const response = await fetch(`${API_BASE_URL}/api/dashboard?${searchParams.toString()}`, {

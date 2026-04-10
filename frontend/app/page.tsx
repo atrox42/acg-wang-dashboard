@@ -15,6 +15,7 @@ export default function Page() {
   return (
     <Dashboard
       username={session.user.username}
+      instagramUserId={session.user.instagramUserId}
       displayName={session.user.displayName}
       preferenceSummary={session.user.preferenceSummary}
       recommendationKeywords={session.user.recommendationKeywords}

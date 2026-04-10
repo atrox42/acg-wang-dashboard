@@ -101,16 +101,36 @@ async function tryFetchInstagramProfile(url: URL): Promise<InstagramProfileRespo
 
 async function resolveInstagramProfile(accessToken: string, fallbackInstagramId: string) {
   const candidates: Array<{ endpoint: string; fields: string }> = [
+    { endpoint: "https://graph.instagram.com/me", fields: "user_id,username" },
+    { endpoint: "https://graph.instagram.com/v23.0/me", fields: "user_id,username" },
+    {
+      endpoint: "https://graph.facebook.com/me",
+      fields: "user_id,username,name,profile_picture_url,followers_count,follows_count,media_count"
+    },
+    {
+      endpoint: "https://graph.facebook.com/v23.0/me",
+      fields: "user_id,username,name,profile_picture_url,followers_count,follows_count,media_count"
+    },
     { endpoint: "https://graph.instagram.com/me", fields: "id,user_id,username,media_count" },
     { endpoint: "https://graph.instagram.com/v23.0/me", fields: "id,user_id,username,media_count" },
+    { endpoint: "https://graph.facebook.com/me", fields: "user_id,username,media_count" },
+    { endpoint: "https://graph.facebook.com/v23.0/me", fields: "user_id,username,media_count" },
     { endpoint: "https://graph.instagram.com/me", fields: "username" },
     { endpoint: "https://graph.instagram.com/v23.0/me", fields: "username" },
+    { endpoint: "https://graph.facebook.com/me", fields: "username" },
+    { endpoint: "https://graph.facebook.com/v23.0/me", fields: "username" },
     { endpoint: "https://graph.instagram.com/me", fields: "user_id" },
     { endpoint: "https://graph.instagram.com/v23.0/me", fields: "user_id" },
+    { endpoint: "https://graph.facebook.com/me", fields: "user_id" },
+    { endpoint: "https://graph.facebook.com/v23.0/me", fields: "user_id" },
     { endpoint: "https://graph.instagram.com/me", fields: "id" },
     { endpoint: "https://graph.instagram.com/v23.0/me", fields: "id" },
+    { endpoint: "https://graph.facebook.com/me", fields: "id" },
+    { endpoint: "https://graph.facebook.com/v23.0/me", fields: "id" },
     { endpoint: "https://graph.instagram.com/me", fields: "media_count" },
     { endpoint: "https://graph.instagram.com/v23.0/me", fields: "media_count" },
+    { endpoint: "https://graph.facebook.com/me", fields: "media_count,followers_count,follows_count" },
+    { endpoint: "https://graph.facebook.com/v23.0/me", fields: "media_count,followers_count,follows_count" },
     { endpoint: `https://graph.instagram.com/${fallbackInstagramId}`, fields: "username" },
     { endpoint: `https://graph.instagram.com/v23.0/${fallbackInstagramId}`, fields: "username" },
     { endpoint: `https://graph.facebook.com/${fallbackInstagramId}`, fields: "username" },
@@ -180,7 +200,9 @@ async function resolveInstagramMetrics(
 ): Promise<Pick<InstagramProfileResponse, "followers_count" | "follows_count" | "media_count"> | null> {
   const metricCandidates = [
     "https://graph.instagram.com/me",
-    "https://graph.instagram.com/v23.0/me"
+    "https://graph.instagram.com/v23.0/me",
+    "https://graph.facebook.com/me",
+    "https://graph.facebook.com/v23.0/me"
   ];
   for (const profileId of profileIds) {
     metricCandidates.push(

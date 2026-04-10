@@ -6,15 +6,30 @@ from app.services.live_dashboard import build_live_dashboard_payload
 from app.services.mock_store import get_mock_dashboard
 
 
-def build_dashboard_payload(days: int, username: str | None = None, db: Session | None = None) -> dict:
+def build_dashboard_payload(
+    days: int,
+    username: str | None = None,
+    instagram_user_id: str | None = None,
+    db: Session | None = None,
+) -> dict:
     if settings.mock_data_mode:
         return get_mock_dashboard(days, username=username)
 
     if db is not None:
-        return build_live_dashboard_payload(db, days, username=username)
+        return build_live_dashboard_payload(
+            db,
+            days,
+            username=username,
+            instagram_user_id=instagram_user_id,
+        )
 
     session = SessionLocal()
     try:
-        return build_live_dashboard_payload(session, days, username=username)
+        return build_live_dashboard_payload(
+            session,
+            days,
+            username=username,
+            instagram_user_id=instagram_user_id,
+        )
     finally:
         session.close()

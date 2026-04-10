@@ -45,9 +45,10 @@ def healthcheck():
 def get_dashboard(
     days: Annotated[int, Query(ge=7, le=90)] = 30,
     username: str | None = Query(default=None),
+    instagram_user_id: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    return build_dashboard_payload(days, username=username, db=db)
+    return build_dashboard_payload(days, username=username, instagram_user_id=instagram_user_id, db=db)
 
 
 @router.post("/cleanup/import-snapshot")
@@ -119,9 +120,15 @@ def save_seeds(payload: SeedInput, db: Session = Depends(get_db)):
 def get_daily_top(
     limit: Annotated[int, Query(ge=1, le=50)] = 50,
     username: str | None = Query(default=None),
+    instagram_user_id: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    dashboard = build_dashboard_payload(30, username=username, db=db)
+    dashboard = build_dashboard_payload(
+        30,
+        username=username,
+        instagram_user_id=instagram_user_id,
+        db=db,
+    )
     return {"items": dashboard["recommendations"][:limit], "generated_at": datetime.utcnow().isoformat()}
 
 

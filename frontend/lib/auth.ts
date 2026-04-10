@@ -12,6 +12,9 @@ export interface SessionUser {
   displayName: string;
   instagramHandle: string;
   profileImage?: string;
+  followerCount?: number;
+  followingCount?: number;
+  mediaCount?: number;
   preferenceSummary: string;
   recommendationKeywords: string[];
   provider: "legacy" | "instagram";
@@ -90,6 +93,9 @@ export function createInstagramSessionUser(profile: {
   username: string;
   name?: string;
   profile_picture_url?: string;
+  follower_count?: number;
+  following_count?: number;
+  media_count?: number;
 }): SessionUser {
   const username = profile.username.replace(/^@/, "");
   return {
@@ -97,6 +103,9 @@ export function createInstagramSessionUser(profile: {
     displayName: profile.name || username,
     instagramHandle: `@${username}`,
     profileImage: profile.profile_picture_url || "",
+    followerCount: profile.follower_count,
+    followingCount: profile.following_count,
+    mediaCount: profile.media_count,
     preferenceSummary:
       "\uc2e4\uc81c \uc778\uc2a4\ud0c0 \uacc4\uc815\uc73c\ub85c \uc5f0\uacb0\ub41c \ub300\uc2dc\ubcf4\ub4dc\uc785\ub2c8\ub2e4. \uc2e4\uc81c \ub370\uc774\ud130 \uae30\ubc18 \ud750\ub984\uc73c\ub85c \uc804\ud658 \uc911\uc785\ub2c8\ub2e4.",
     recommendationKeywords: ["instagram", "creator", "dashboard"],

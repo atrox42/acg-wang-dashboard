@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -17,12 +18,22 @@ from app.services.csv_import import parse_snapshot_csv
 from app.services.dashboard import build_dashboard_payload
 from app.services.live_dashboard import (
     import_snapshot_rows,
+    sync_connected_profile as sync_connected_profile_live,
     save_recommendation_action_live,
     save_seed_values,
 )
 from app.tasks.recalculate import recalculate_daily_scores
 
 router = APIRouter(prefix="/api")
+
+
+class ConnectedProfileSyncInput(BaseModel):
+    username: str
+    full_name: str | None = None
+    instagram_user_id: str | None = None
+    follower_count: int | None = None
+    following_count: int | None = None
+    media_count: int | None = None
 
 
 @router.get("/health")
@@ -127,6 +138,32 @@ def save_recommendation_action(payload: RecommendationActionInput, db: Session =
         "action": payload.action,
         "saved": True,
     }
+
+
+@router.post("/live/profile-sync")
+def sync_connected_profile(payload: ConnectedProfileSyncInput, db: Session = Depends(get_db)):
+    if settings.mock_data_mode:
+        return {
+            "synced": True,
+            "username": payload.username.lstrip("@").lower(),
+            "follower_count": payload.follower_count or 0,
+            "following_count": payload.following_count or 0,
+            "media_count": payload.media_count or 0,
+            "mock_mode": True,
+        }
+
+    try:
+        return sync_connected_profile_live(
+            db,
+            username=payload.username,
+            full_name=payload.full_name,
+            instagram_user_id=payload.instagram_user_id,
+            follower_count=payload.follower_count,
+            following_count=payload.following_count,
+            media_count=payload.media_count,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @router.get("/webhooks/instagram/comments")

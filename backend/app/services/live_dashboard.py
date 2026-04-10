@@ -35,7 +35,7 @@ def _extract_profile_bio(account: Account) -> str:
     if isinstance(bio, str) and bio.strip():
         return bio.strip()
     if account.category:
-        return f"{account.category} 관련 계정"
+        return f"{account.category} 관??계정"
     return account.full_name or ""
 
 
@@ -452,7 +452,67 @@ def save_recommendation_action_live(db: Session, recommendation_id: str, action:
     }
 
 
+def sync_connected_profile(
+    db: Session,
+    *,
+    username: str,
+    full_name: str | None = None,
+    instagram_user_id: str | None = None,
+    follower_count: int | None = None,
+    following_count: int | None = None,
+    media_count: int | None = None,
+) -> dict:
+    normalized_username = username.strip().lower().lstrip("@")
+    if not normalized_username:
+        raise ValueError("username is required")
+
+    now = datetime.utcnow()
+    account = db.execute(select(Account).where(Account.username == normalized_username)).scalar_one_or_none()
+    if account is None:
+        account = Account(
+            id=_new_id("acct"),
+            username=normalized_username,
+            created_at=now,
+        )
+        db.add(account)
+
+    metadata = account.metadata_json or {}
+    metadata["source"] = "instagram_oauth"
+    metadata["last_synced_at"] = now.isoformat()
+    if instagram_user_id:
+        metadata["instagram_user_id"] = str(instagram_user_id)
+    if media_count is not None:
+        metadata["media_count"] = int(media_count)
+
+    account.full_name = full_name or account.full_name or normalized_username
+    if follower_count is not None:
+        account.follower_count = int(follower_count)
+    if following_count is not None:
+        account.following_count = int(following_count)
+    account.metadata_json = metadata
+    account.updated_at = now
+
+    db.commit()
+
+    return {
+        "synced": True,
+        "account_id": account.id,
+        "username": account.username,
+        "follower_count": account.follower_count or 0,
+        "following_count": account.following_count or 0,
+        "media_count": int((account.metadata_json or {}).get("media_count") or 0),
+        "mock_mode": False,
+    }
+
+
 def build_live_dashboard_payload(db: Session, days: int, username: str | None = None) -> dict:
+    normalized_username = username.strip().lower().lstrip("@") if username else None
+    connected_account = None
+    if normalized_username:
+        connected_account = db.execute(
+            select(Account).where(Account.username == normalized_username)
+        ).scalar_one_or_none()
+
     latest_follower = _latest_snapshot(db, "followers")
     latest_following = _latest_snapshot(db, "following")
     previous_follower = _latest_snapshot(db, "followers", offset=1)
@@ -504,11 +564,11 @@ def build_live_dashboard_payload(db: Session, days: int, username: str | None = 
         latest_comment = latest_comment_map.get(account_id)
         tags = []
         if account_id in follower_ids and account_id in following_ids:
-            tags.append("맞팔")
+            tags.append("mutual")
         elif account_id in follower_ids:
-            tags.append("팔로워")
+            tags.append("follower")
         elif account_id in following_ids:
-            tags.append("팔로잉")
+            tags.append("following")
         if account.category:
             tags.append(account.category)
 
@@ -524,9 +584,9 @@ def build_live_dashboard_payload(db: Session, days: int, username: str | None = 
                 "likes_last_30_days": 0,
                 "repeated_comments": score_data["repeated_comments"],
                 "recent_comment_preview": latest_comment.comment_text if latest_comment else "",
-                "recent_reaction_label": "오늘 댓글"
+                "recent_reaction_label": "today activity"
                 if latest_comment and latest_comment.created_at >= datetime.utcnow() - timedelta(days=1)
-                else "최근 활동",
+                else "recent activity",
                 "interaction_score": score_data["interaction_score"],
                 "inactivity_penalty": score_data["inactivity_penalty"],
                 "bucket": score_data["bucket"],
@@ -597,14 +657,24 @@ def build_live_dashboard_payload(db: Session, days: int, username: str | None = 
         recommendation_counts[item["action"]] += 1
 
     comment_count = db.execute(select(func.count(Comment.id))).scalar_one()
+    connected_metadata = (connected_account.metadata_json or {}) if connected_account else {}
+    connected_media_count_raw = connected_metadata.get("media_count")
+    connected_media_count = (
+        int(connected_media_count_raw)
+        if isinstance(connected_media_count_raw, (int, float, str)) and str(connected_media_count_raw).strip()
+        else 0
+    )
+
+    fallback_followers = connected_account.follower_count if connected_account and connected_account.follower_count is not None else 0
+    fallback_following = connected_account.following_count if connected_account and connected_account.following_count is not None else 0
 
     return {
         "mock_mode": False,
         "days": days,
         "cleanup_summary": {
-            "imported_followers": len(follower_accounts),
-            "imported_following": len(following_accounts),
-            "tracked_posts": 0,
+            "imported_followers": len(follower_accounts) or fallback_followers,
+            "imported_following": len(following_accounts) or fallback_following,
+            "tracked_posts": connected_media_count,
             "tracked_comments": comment_count,
             "daily_follower_delta": len(daily_follower_accounts),
             "daily_unfollow_count": len(daily_unfollow_accounts),

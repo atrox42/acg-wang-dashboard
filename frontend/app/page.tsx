@@ -18,6 +18,8 @@ export default function Page() {
       displayName={session.user.displayName}
       preferenceSummary={session.user.preferenceSummary}
       recommendationKeywords={session.user.recommendationKeywords}
+      followerCount={session.user.followerCount}
+      followingCount={session.user.followingCount}
     />
   );
 }

@@ -21,6 +21,11 @@ interface InstagramProfileResponse {
   id?: string;
   user_id?: string | number;
   username?: string;
+  name?: string;
+  profile_picture_url?: string;
+  followers_count?: number;
+  follows_count?: number;
+  media_count?: number;
 }
 
 function redirectToLogin(error: string, redirectUri?: string, detail?: string) {
@@ -30,6 +35,140 @@ function redirectToLogin(error: string, redirectUri?: string, detail?: string) {
     target.searchParams.set("detail", detail.slice(0, 240));
   }
   return NextResponse.redirect(target);
+}
+
+function getBackendApiBaseUrl() {
+  return (
+    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
+    process.env.API_BASE_URL?.trim() ||
+    "http://localhost:8000"
+  ).replace(/\/$/, "");
+}
+
+async function tryFetchInstagramProfile(url: URL): Promise<InstagramProfileResponse | null> {
+  try {
+    const response = await fetch(url.toString(), { cache: "no-store" });
+    if (!response.ok) {
+      const body = await response.text();
+      console.error("Instagram profile candidate failed", {
+        url: url.toString(),
+        status: response.status,
+        statusText: response.statusText,
+        body
+      });
+      return null;
+    }
+
+    const profile = (await response.json()) as InstagramProfileResponse;
+    if (profile && Object.keys(profile).length > 0) {
+      return profile;
+    }
+  } catch (error) {
+    console.error("Instagram profile candidate threw", { url: url.toString(), error });
+  }
+
+  return null;
+}
+
+async function resolveInstagramProfile(accessToken: string, fallbackInstagramId: string) {
+  const candidates: Array<{ endpoint: string; fields: string }> = [
+    { endpoint: "https://graph.instagram.com/me", fields: "id,username,name,profile_picture_url" },
+    { endpoint: "https://graph.instagram.com/v23.0/me", fields: "id,username,name,profile_picture_url" },
+    {
+      endpoint: `https://graph.instagram.com/${fallbackInstagramId}`,
+      fields: "id,username,name,profile_picture_url"
+    },
+    {
+      endpoint: `https://graph.instagram.com/v23.0/${fallbackInstagramId}`,
+      fields: "id,username,name,profile_picture_url"
+    },
+    {
+      endpoint: `https://graph.facebook.com/${fallbackInstagramId}`,
+      fields: "id,username,name,profile_picture_url"
+    },
+    {
+      endpoint: `https://graph.facebook.com/v23.0/${fallbackInstagramId}`,
+      fields: "id,username,name,profile_picture_url"
+    }
+  ];
+
+  for (const candidate of candidates) {
+    const url = new URL(candidate.endpoint);
+    url.searchParams.set("fields", candidate.fields);
+    url.searchParams.set("access_token", accessToken);
+    const profile = await tryFetchInstagramProfile(url);
+    if (profile) return profile;
+  }
+
+  return null;
+}
+
+async function resolveInstagramMetrics(
+  accessToken: string,
+  profileId: string
+): Promise<Pick<InstagramProfileResponse, "followers_count" | "follows_count" | "media_count"> | null> {
+  const metricCandidates = [
+    `https://graph.instagram.com/${profileId}`,
+    `https://graph.instagram.com/v23.0/${profileId}`,
+    `https://graph.facebook.com/${profileId}`,
+    `https://graph.facebook.com/v23.0/${profileId}`
+  ];
+
+  for (const endpoint of metricCandidates) {
+    const url = new URL(endpoint);
+    url.searchParams.set("fields", "followers_count,follows_count,media_count");
+    url.searchParams.set("access_token", accessToken);
+    const profile = await tryFetchInstagramProfile(url);
+    if (profile) {
+      return {
+        followers_count: profile.followers_count,
+        follows_count: profile.follows_count,
+        media_count: profile.media_count
+      };
+    }
+  }
+
+  return null;
+}
+
+async function syncConnectedProfileToBackend(input: {
+  username: string;
+  fullName?: string;
+  instagramUserId?: string;
+  followerCount?: number;
+  followingCount?: number;
+  mediaCount?: number;
+}) {
+  const apiBase = getBackendApiBaseUrl();
+
+  try {
+    const response = await fetch(`${apiBase}/api/live/profile-sync`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        username: input.username,
+        full_name: input.fullName,
+        instagram_user_id: input.instagramUserId,
+        follower_count: input.followerCount,
+        following_count: input.followingCount,
+        media_count: input.mediaCount
+      }),
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      console.error("Connected profile sync failed", {
+        status: response.status,
+        statusText: response.statusText,
+        body
+      });
+    }
+  } catch (error) {
+    console.error("Connected profile sync threw", error);
+  }
 }
 
 export async function GET(request: Request) {
@@ -92,36 +231,29 @@ export async function GET(request: Request) {
   // Instagram Login is already proving account ownership here. If profile lookup
   // fails for a given token shape, still let the user into the dashboard with a
   // stable placeholder handle derived from the Instagram user id.
-  let profile: InstagramProfileResponse | null = null;
-  try {
-    const profileUrl = new URL("https://graph.instagram.com/me");
-    profileUrl.searchParams.set("fields", "user_id,username");
-    profileUrl.searchParams.set("access_token", tokenPayload.access_token);
-
-    const profileResponse = await fetch(profileUrl.toString(), {
-      cache: "no-store"
-    });
-
-    if (profileResponse.ok) {
-      profile = (await profileResponse.json()) as InstagramProfileResponse;
-    } else {
-      const body = await profileResponse.text();
-      console.error("Instagram profile fetch failed", {
-        status: profileResponse.status,
-        statusText: profileResponse.statusText,
-        body
-      });
-    }
-  } catch (error) {
-    console.error("Instagram profile request threw", error);
-  }
+  const profile = await resolveInstagramProfile(tokenPayload.access_token, fallbackInstagramId);
+  const profileId = String(profile?.id || profile?.user_id || fallbackInstagramId);
+  const metrics = await resolveInstagramMetrics(tokenPayload.access_token, profileId);
 
   const resolvedUsername = profile?.username || `instagram-${fallbackInstagramId}`;
 
   const sessionUser = createInstagramSessionUser({
-    id: String(profile?.user_id || profile?.id || fallbackInstagramId),
+    id: profileId,
     username: resolvedUsername,
-    name: profile?.username || "Instagram Connected"
+    name: profile?.name || profile?.username || "Instagram Connected",
+    profile_picture_url: profile?.profile_picture_url,
+    follower_count: metrics?.followers_count,
+    following_count: metrics?.follows_count,
+    media_count: metrics?.media_count
+  });
+
+  await syncConnectedProfileToBackend({
+    username: resolvedUsername,
+    fullName: profile?.name || profile?.username || resolvedUsername,
+    instagramUserId: profileId,
+    followerCount: metrics?.followers_count,
+    followingCount: metrics?.follows_count,
+    mediaCount: metrics?.media_count
   });
 
   cookies().set({

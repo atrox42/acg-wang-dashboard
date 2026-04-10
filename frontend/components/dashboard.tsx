@@ -367,12 +367,16 @@ export function Dashboard({
   username,
   displayName,
   preferenceSummary,
-  recommendationKeywords
+  recommendationKeywords,
+  followerCount,
+  followingCount
 }: {
   username: string;
   displayName: string;
   preferenceSummary: string;
   recommendationKeywords: string[];
+  followerCount?: number;
+  followingCount?: number;
 }) {
   const [tab, setTab] = useState<TabKey>("relationship");
   const [days, setDays] = useState<WindowDays>(30);
@@ -697,6 +701,11 @@ export function Dashboard({
   }
 
   const pendingUnfollowAccount = unfollowAccounts.find((account) => account.accountId === pendingUnfollowId) ?? null;
+  const followerTotal =
+    followerAccounts.length || payload?.cleanupSummary.importedFollowers || followerCount || 0;
+  const followingTotal =
+    followingAccounts.length || payload?.cleanupSummary.importedFollowing || followingCount || 0;
+  const recommendationTotal = recommendationSummary.dailyTopCount;
 
   if (loading) return <div className="shell">{UI.loading}</div>;
   if (error || !payload) return <div className="shell">Error: {error ?? UI.noData}</div>;
@@ -724,11 +733,11 @@ export function Dashboard({
           <div className="ctaGrid">
             <button className="ctaCard" onClick={() => handleOpenSummaryPanel("followers")}>
               <span className="ctaLabel">{UI.followers}</span>
-              <strong className="ctaValue">{followerAccounts.length || payload.cleanupSummary.importedFollowers}</strong>
+              <strong className="ctaValue">{followerTotal}</strong>
             </button>
             <button className="ctaCard" onClick={() => handleOpenSummaryPanel("following")}>
               <span className="ctaLabel">{UI.following}</span>
-              <strong className="ctaValue">{followingAccounts.length || payload.cleanupSummary.importedFollowing}</strong>
+              <strong className="ctaValue">{followingTotal}</strong>
             </button>
             <button className="ctaCard" onClick={() => handleOpenSummaryPanel("unfollow")}>
               <span className="ctaLabel">{UI.unfollow}</span>
@@ -736,7 +745,7 @@ export function Dashboard({
             </button>
             <button className="ctaCard" onClick={() => handleOpenSummaryPanel("recommendations")}>
               <span className="ctaLabel">{UI.todayRecommendations}</span>
-              <strong className="ctaValue">{recommendationSummary.dailyTopCount}</strong>
+              <strong className="ctaValue">{recommendationTotal}</strong>
             </button>
           </div>
         </div>

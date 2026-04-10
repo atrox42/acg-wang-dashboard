@@ -46,9 +46,19 @@ function getBackendApiBaseUrl() {
   ).replace(/\/$/, "");
 }
 
-async function tryFetchInstagramProfile(url: URL): Promise<InstagramProfileResponse | null> {
+async function fetchInstagramProfileCandidate(
+  url: URL,
+  bearerToken?: string
+): Promise<InstagramProfileResponse | null> {
   try {
-    const response = await fetch(url.toString(), { cache: "no-store" });
+    const response = await fetch(url.toString(), {
+      cache: "no-store",
+      headers: bearerToken
+        ? {
+            Authorization: `Bearer ${bearerToken}`
+          }
+        : undefined
+    });
     if (!response.ok) {
       const body = await response.text();
       console.error("Instagram profile candidate failed", {
@@ -71,8 +81,28 @@ async function tryFetchInstagramProfile(url: URL): Promise<InstagramProfileRespo
   return null;
 }
 
+async function tryFetchInstagramProfile(url: URL): Promise<InstagramProfileResponse | null> {
+  const direct = await fetchInstagramProfileCandidate(url);
+  if (direct) {
+    return direct;
+  }
+
+  const token = url.searchParams.get("access_token");
+  if (!token) {
+    return null;
+  }
+
+  // Some Instagram API configurations reject access_token in query string.
+  // Retry with Authorization Bearer on the same endpoint.
+  const bearerUrl = new URL(url.toString());
+  bearerUrl.searchParams.delete("access_token");
+  return fetchInstagramProfileCandidate(bearerUrl, token);
+}
+
 async function resolveInstagramProfile(accessToken: string, fallbackInstagramId: string) {
   const candidates: Array<{ endpoint: string; fields: string }> = [
+    { endpoint: "https://graph.instagram.com/me", fields: "id,user_id,username,media_count" },
+    { endpoint: "https://graph.instagram.com/v23.0/me", fields: "id,user_id,username,media_count" },
     { endpoint: "https://graph.instagram.com/me", fields: "username" },
     { endpoint: "https://graph.instagram.com/v23.0/me", fields: "username" },
     { endpoint: "https://graph.instagram.com/me", fields: "user_id" },
@@ -106,21 +136,60 @@ async function resolveInstagramProfile(accessToken: string, fallbackInstagramId:
     }
   }
 
+  // Some tokens return user_id without username on /me.
+  // In that case, resolve username by querying the concrete user node.
+  const nodeIds = Array.from(
+    new Set([merged.user_id, merged.id, fallbackInstagramId].filter(Boolean).map((value) => String(value)))
+  );
+  const nodeCandidates: Array<{ endpoint: string; fields: string }> = [];
+  for (const nodeId of nodeIds) {
+    nodeCandidates.push(
+      { endpoint: `https://graph.instagram.com/${nodeId}`, fields: "username,media_count" },
+      { endpoint: `https://graph.instagram.com/v23.0/${nodeId}`, fields: "username,media_count" },
+      { endpoint: `https://graph.facebook.com/${nodeId}`, fields: "username,followers_count,follows_count,media_count" },
+      {
+        endpoint: `https://graph.facebook.com/v23.0/${nodeId}`,
+        fields: "username,followers_count,follows_count,media_count"
+      }
+    );
+  }
+
+  for (const candidate of nodeCandidates) {
+    const url = new URL(candidate.endpoint);
+    url.searchParams.set("fields", candidate.fields);
+    url.searchParams.set("access_token", accessToken);
+    const profile = await tryFetchInstagramProfile(url);
+    if (!profile) continue;
+
+    merged = {
+      ...merged,
+      ...profile
+    };
+
+    if (merged.username) {
+      return merged;
+    }
+  }
+
   return Object.keys(merged).length > 0 ? merged : null;
 }
 
 async function resolveInstagramMetrics(
   accessToken: string,
-  profileId: string
+  profileIds: string[]
 ): Promise<Pick<InstagramProfileResponse, "followers_count" | "follows_count" | "media_count"> | null> {
   const metricCandidates = [
     "https://graph.instagram.com/me",
-    "https://graph.instagram.com/v23.0/me",
-    `https://graph.instagram.com/${profileId}`,
-    `https://graph.instagram.com/v23.0/${profileId}`,
-    `https://graph.facebook.com/${profileId}`,
-    `https://graph.facebook.com/v23.0/${profileId}`
+    "https://graph.instagram.com/v23.0/me"
   ];
+  for (const profileId of profileIds) {
+    metricCandidates.push(
+      `https://graph.instagram.com/${profileId}`,
+      `https://graph.instagram.com/v23.0/${profileId}`,
+      `https://graph.facebook.com/${profileId}`,
+      `https://graph.facebook.com/v23.0/${profileId}`
+    );
+  }
   const metricFields = [
     "followers_count,follows_count,media_count",
     "media_count",
@@ -252,8 +321,11 @@ export async function GET(request: Request) {
   // fails for a given token shape, still let the user into the dashboard with a
   // stable placeholder handle derived from the Instagram user id.
   const profile = await resolveInstagramProfile(tokenPayload.access_token, fallbackInstagramId);
-  const profileId = String(profile?.id || profile?.user_id || fallbackInstagramId);
-  const metrics = await resolveInstagramMetrics(tokenPayload.access_token, profileId);
+  const profileId = String(profile?.user_id || profile?.id || fallbackInstagramId);
+  const metricProfileIds = Array.from(
+    new Set([profile?.user_id, profile?.id, fallbackInstagramId].filter(Boolean).map((value) => String(value)))
+  );
+  const metrics = await resolveInstagramMetrics(tokenPayload.access_token, metricProfileIds);
 
   const resolvedUsername = profile?.username || `instagram-${fallbackInstagramId}`;
 

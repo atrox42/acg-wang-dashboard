@@ -74,27 +74,27 @@ async function resolveInstagramProfile(accessToken: string, fallbackInstagramId:
   const candidates: Array<{ endpoint: string; fields: string }> = [
     {
       endpoint: "https://graph.instagram.com/me",
-      fields: "id,user_id,username,account_type,media_count,name,profile_picture_url"
+      fields: "user_id,username"
     },
     {
       endpoint: "https://graph.instagram.com/v23.0/me",
-      fields: "id,user_id,username,account_type,media_count,name,profile_picture_url"
+      fields: "user_id,username"
     },
     {
       endpoint: `https://graph.instagram.com/${fallbackInstagramId}`,
-      fields: "id,user_id,username,account_type,media_count,name,profile_picture_url"
+      fields: "user_id,username"
     },
     {
       endpoint: `https://graph.instagram.com/v23.0/${fallbackInstagramId}`,
-      fields: "id,user_id,username,account_type,media_count,name,profile_picture_url"
+      fields: "user_id,username"
     },
     {
       endpoint: `https://graph.facebook.com/${fallbackInstagramId}`,
-      fields: "id,username,name,profile_picture_url,followers_count,follows_count,media_count"
+      fields: "id,username"
     },
     {
       endpoint: `https://graph.facebook.com/v23.0/${fallbackInstagramId}`,
-      fields: "id,username,name,profile_picture_url,followers_count,follows_count,media_count"
+      fields: "id,username"
     }
   ];
 
@@ -125,6 +125,8 @@ async function resolveInstagramMetrics(
   profileId: string
 ): Promise<Pick<InstagramProfileResponse, "followers_count" | "follows_count" | "media_count"> | null> {
   const metricCandidates = [
+    "https://graph.instagram.com/me",
+    "https://graph.instagram.com/v23.0/me",
     `https://graph.instagram.com/${profileId}`,
     `https://graph.instagram.com/v23.0/${profileId}`,
     `https://graph.facebook.com/${profileId}`,

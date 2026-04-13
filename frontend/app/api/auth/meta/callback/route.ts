@@ -249,6 +249,7 @@ async function syncConnectedProfileToBackend(input: {
   followerCount?: number;
   followingCount?: number;
   mediaCount?: number;
+  accessToken?: string;
 }) {
   const apiBase = getBackendApiBaseUrl();
 
@@ -264,7 +265,8 @@ async function syncConnectedProfileToBackend(input: {
         instagram_user_id: input.instagramUserId,
         follower_count: input.followerCount,
         following_count: input.followingCount,
-        media_count: input.mediaCount
+        media_count: input.mediaCount,
+        access_token: input.accessToken
       }),
       cache: "no-store"
     });
@@ -367,7 +369,8 @@ export async function GET(request: Request) {
     instagramUserId: profileId,
     followerCount: metrics?.followers_count,
     followingCount: metrics?.follows_count,
-    mediaCount: metrics?.media_count ?? profile?.media_count
+    mediaCount: metrics?.media_count ?? profile?.media_count,
+    accessToken: tokenPayload.access_token
   });
 
   cookies().set({

@@ -34,6 +34,7 @@ class ConnectedProfileSyncInput(BaseModel):
     follower_count: int | None = None
     following_count: int | None = None
     media_count: int | None = None
+    access_token: str | None = None
 
 
 @router.get("/health")
@@ -168,6 +169,7 @@ def sync_connected_profile(payload: ConnectedProfileSyncInput, db: Session = Dep
             follower_count=payload.follower_count,
             following_count=payload.following_count,
             media_count=payload.media_count,
+            access_token=payload.access_token,
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error

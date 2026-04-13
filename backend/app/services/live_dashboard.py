@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+import json
 from typing import Iterable
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 from uuid import uuid4
 
 from sqlalchemy import delete, func, select
@@ -175,6 +179,128 @@ def _load_comment_stats(db: Session, account_ids: Iterable[str], window_days: in
             "last_interaction_at": last_interaction_at,
         }
     return stats
+
+
+def _fetch_instagram_profile_candidate(url: str, bearer_token: str | None = None) -> dict | None:
+    request = Request(url)
+    if bearer_token:
+        request.add_header("Authorization", f"Bearer {bearer_token}")
+
+    try:
+        with urlopen(request, timeout=10) as response:
+            body = response.read().decode("utf-8")
+    except (HTTPError, URLError, TimeoutError):
+        return None
+
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        return None
+
+    return payload if isinstance(payload, dict) else None
+
+
+def _try_fetch_instagram_profile(endpoint: str, fields: str, access_token: str) -> dict | None:
+    query_url = f"{endpoint}?{urlencode({'fields': fields, 'access_token': access_token})}"
+    direct_payload = _fetch_instagram_profile_candidate(query_url)
+    if direct_payload and not direct_payload.get("error"):
+        return direct_payload
+
+    bearer_url = f"{endpoint}?{urlencode({'fields': fields})}"
+    bearer_payload = _fetch_instagram_profile_candidate(bearer_url, bearer_token=access_token)
+    if bearer_payload and not bearer_payload.get("error"):
+        return bearer_payload
+
+    return None
+
+
+def _resolve_instagram_profile(access_token: str, fallback_instagram_id: str | None) -> dict | None:
+    fallback_value = (fallback_instagram_id or "").strip()
+    merged: dict = {}
+
+    base_candidates = [
+        ("https://graph.instagram.com/me", "user_id,username,name,profile_picture_url,followers_count,follows_count,media_count"),
+        ("https://graph.instagram.com/v23.0/me", "user_id,username,name,profile_picture_url,followers_count,follows_count,media_count"),
+        ("https://graph.facebook.com/me", "id,username,name,profile_picture_url,followers_count,follows_count,media_count"),
+        ("https://graph.facebook.com/v23.0/me", "id,username,name,profile_picture_url,followers_count,follows_count,media_count"),
+        ("https://graph.instagram.com/me", "username,media_count"),
+        ("https://graph.instagram.com/v23.0/me", "username,media_count"),
+        ("https://graph.facebook.com/me", "username,media_count"),
+        ("https://graph.facebook.com/v23.0/me", "username,media_count"),
+    ]
+
+    for endpoint, fields in base_candidates:
+        payload = _try_fetch_instagram_profile(endpoint, fields, access_token)
+        if not payload:
+            continue
+        merged = {**merged, **payload}
+        if merged.get("username") and (
+            isinstance(merged.get("followers_count"), int)
+            or isinstance(merged.get("follows_count"), int)
+            or isinstance(merged.get("media_count"), int)
+        ):
+            return merged
+
+    node_ids = []
+    for candidate in [merged.get("user_id"), merged.get("id"), fallback_value]:
+        if candidate is None:
+            continue
+        normalized = str(candidate).strip()
+        if normalized and normalized not in node_ids:
+            node_ids.append(normalized)
+
+    for node_id in node_ids:
+        for endpoint, fields in [
+            (f"https://graph.instagram.com/{node_id}", "username,media_count"),
+            (f"https://graph.instagram.com/v23.0/{node_id}", "username,media_count"),
+            (f"https://graph.facebook.com/{node_id}", "username,followers_count,follows_count,media_count"),
+            (f"https://graph.facebook.com/v23.0/{node_id}", "username,followers_count,follows_count,media_count"),
+        ]:
+            payload = _try_fetch_instagram_profile(endpoint, fields, access_token)
+            if not payload:
+                continue
+            merged = {**merged, **payload}
+            if merged.get("username"):
+                return merged
+
+    return merged or None
+
+
+def _refresh_connected_account_from_token(
+    db: Session,
+    account: Account,
+    *,
+    access_token: str,
+    instagram_user_id: str | None,
+) -> None:
+    profile = _resolve_instagram_profile(access_token, instagram_user_id)
+    if not profile:
+        return
+
+    metadata = account.metadata_json or {}
+    resolved_username = str(profile.get("username") or "").strip().lower().lstrip("@")
+    if resolved_username:
+        existing_account = db.execute(
+            select(Account).where(Account.username == resolved_username)
+        ).scalar_one_or_none()
+        if existing_account is None or existing_account.id == account.id:
+            account.username = resolved_username
+        metadata["resolved_username"] = resolved_username
+
+    if profile.get("name"):
+        account.full_name = str(profile["name"]).strip()
+    if isinstance(profile.get("followers_count"), int):
+        account.follower_count = int(profile["followers_count"])
+    if isinstance(profile.get("follows_count"), int):
+        account.following_count = int(profile["follows_count"])
+    if isinstance(profile.get("media_count"), int):
+        metadata["media_count"] = int(profile["media_count"])
+    if profile.get("profile_picture_url"):
+        metadata["profile_picture_url"] = str(profile["profile_picture_url"]).strip()
+
+    metadata["last_live_refresh_at"] = datetime.utcnow().isoformat()
+    account.metadata_json = metadata
+    account.updated_at = datetime.utcnow()
 
 
 def _baseline_relationship(account_id: str, mutual_ids: set[str], follower_ids: set[str], following_ids: set[str]) -> dict:
@@ -461,6 +587,7 @@ def sync_connected_profile(
     follower_count: int | None = None,
     following_count: int | None = None,
     media_count: int | None = None,
+    access_token: str | None = None,
 ) -> dict:
     normalized_username = username.strip().lower().lstrip("@")
     if not normalized_username:
@@ -483,6 +610,8 @@ def sync_connected_profile(
         metadata["instagram_user_id"] = str(instagram_user_id)
     if media_count is not None:
         metadata["media_count"] = int(media_count)
+    if access_token:
+        metadata["instagram_access_token"] = access_token
 
     account.full_name = full_name or account.full_name or normalized_username
     if follower_count is not None:
@@ -491,6 +620,19 @@ def sync_connected_profile(
         account.following_count = int(following_count)
     account.metadata_json = metadata
     account.updated_at = now
+
+    if access_token and (
+        normalized_username.startswith("instagram-")
+        or account.follower_count in (None, 0)
+        or account.following_count in (None, 0)
+        or int((metadata or {}).get("media_count") or 0) == 0
+    ):
+        _refresh_connected_account_from_token(
+            db,
+            account,
+            access_token=access_token,
+            instagram_user_id=instagram_user_id,
+        )
 
     db.commit()
 
@@ -548,6 +690,23 @@ def build_live_dashboard_payload(
         username=normalized_username,
         instagram_user_id=instagram_user_id,
     )
+    if connected_account is not None:
+        metadata = connected_account.metadata_json or {}
+        access_token = metadata.get("instagram_access_token")
+        needs_live_refresh = bool(access_token) and (
+            connected_account.username.startswith("instagram-")
+            or connected_account.follower_count in (None, 0)
+            or connected_account.following_count in (None, 0)
+            or int(metadata.get("media_count") or 0) == 0
+        )
+        if needs_live_refresh:
+            _refresh_connected_account_from_token(
+                db,
+                connected_account,
+                access_token=str(access_token),
+                instagram_user_id=str(metadata.get("instagram_user_id") or instagram_user_id or ""),
+            )
+            db.commit()
 
     latest_follower = _latest_snapshot(db, "followers")
     latest_following = _latest_snapshot(db, "following")

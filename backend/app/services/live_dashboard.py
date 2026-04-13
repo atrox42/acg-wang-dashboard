@@ -200,16 +200,29 @@ def _fetch_instagram_profile_candidate(url: str, bearer_token: str | None = None
     return payload if isinstance(payload, dict) else None
 
 
+def _normalize_instagram_profile_payload(payload: dict | None) -> dict | None:
+    if not payload:
+        return None
+
+    nested_data = payload.get("data")
+    if isinstance(nested_data, list) and nested_data and isinstance(nested_data[0], dict):
+        return nested_data[0]
+
+    return payload
+
+
 def _try_fetch_instagram_profile(endpoint: str, fields: str, access_token: str) -> dict | None:
     query_url = f"{endpoint}?{urlencode({'fields': fields, 'access_token': access_token})}"
     direct_payload = _fetch_instagram_profile_candidate(query_url)
-    if direct_payload and not direct_payload.get("error"):
-        return direct_payload
+    normalized_direct_payload = _normalize_instagram_profile_payload(direct_payload)
+    if normalized_direct_payload and not normalized_direct_payload.get("error"):
+        return normalized_direct_payload
 
     bearer_url = f"{endpoint}?{urlencode({'fields': fields})}"
     bearer_payload = _fetch_instagram_profile_candidate(bearer_url, bearer_token=access_token)
-    if bearer_payload and not bearer_payload.get("error"):
-        return bearer_payload
+    normalized_bearer_payload = _normalize_instagram_profile_payload(bearer_payload)
+    if normalized_bearer_payload and not normalized_bearer_payload.get("error"):
+        return normalized_bearer_payload
 
     return None
 

@@ -29,6 +29,33 @@ interface InstagramProfileResponse {
   media_count?: number;
 }
 
+function normalizeInstagramProfilePayload(payload: unknown): InstagramProfileResponse | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const record = payload as Record<string, unknown>;
+  const nestedData = record.data;
+  if (
+    Array.isArray(nestedData) &&
+    nestedData.length > 0 &&
+    nestedData[0] &&
+    typeof nestedData[0] === "object"
+  ) {
+    return nestedData[0] as InstagramProfileResponse;
+  }
+
+  return payload as InstagramProfileResponse;
+}
+
+function redactAccessToken(url: string) {
+  const parsed = new URL(url);
+  if (parsed.searchParams.has("access_token")) {
+    parsed.searchParams.set("access_token", "[redacted]");
+  }
+  return parsed.toString();
+}
+
 function redirectToLogin(error: string, redirectUri?: string, detail?: string) {
   const fallbackOrigin = redirectUri ? new URL(redirectUri).origin : "http://localhost:3000";
   const target = new URL(`/login?error=${error}`, fallbackOrigin);
@@ -62,7 +89,7 @@ async function fetchInstagramProfileCandidate(
     if (!response.ok) {
       const body = await response.text();
       console.error("Instagram profile candidate failed", {
-        url: url.toString(),
+        url: redactAccessToken(url.toString()),
         status: response.status,
         statusText: response.statusText,
         body
@@ -70,12 +97,12 @@ async function fetchInstagramProfileCandidate(
       return null;
     }
 
-    const profile = (await response.json()) as InstagramProfileResponse;
+    const profile = normalizeInstagramProfilePayload(await response.json());
     if (profile && Object.keys(profile).length > 0) {
       return profile;
     }
   } catch (error) {
-    console.error("Instagram profile candidate threw", { url: url.toString(), error });
+    console.error("Instagram profile candidate threw", { url: redactAccessToken(url.toString()), error });
   }
 
   return null;

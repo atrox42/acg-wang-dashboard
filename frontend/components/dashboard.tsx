@@ -703,10 +703,16 @@ export function Dashboard({
   }
 
   const pendingUnfollowAccount = unfollowAccounts.find((account) => account.accountId === pendingUnfollowId) ?? null;
+  const connectedProfile = payload?.connectedProfile;
+  const activeUsername = connectedProfile?.username || username;
+  const activeDisplayName = connectedProfile?.displayName || displayName;
+  const activeProfileImage = connectedProfile?.profileImage;
+  const activeFollowerCount = connectedProfile?.followerCount || followerCount;
+  const activeFollowingCount = connectedProfile?.followingCount || followingCount;
   const followerTotal =
-    followerAccounts.length || payload?.cleanupSummary.importedFollowers || followerCount || 0;
+    activeFollowerCount || followerAccounts.length || payload?.cleanupSummary.importedFollowers || 0;
   const followingTotal =
-    followingAccounts.length || payload?.cleanupSummary.importedFollowing || followingCount || 0;
+    activeFollowingCount || followingAccounts.length || payload?.cleanupSummary.importedFollowing || 0;
   const recommendationTotal = recommendationSummary.dailyTopCount;
 
   if (loading) return <div className="shell">{UI.loading}</div>;
@@ -724,10 +730,10 @@ export function Dashboard({
           </div>
           <h1 className="heroTitle">{UI.title}</h1>
           <div className="profileRow">
-            <Avatar name={username} size="lg" />
+            <Avatar name={activeUsername} image={activeProfileImage} size="lg" />
             <div>
-              <div className="profileLabel">{displayName}</div>
-              <div className="profileName">@{username}</div>
+              <div className="profileLabel">{activeDisplayName}</div>
+              <div className="profileName">@{activeUsername}</div>
             </div>
           </div>
           <p className="heroText">{preferenceSummary}</p>

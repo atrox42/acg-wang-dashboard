@@ -59,8 +59,18 @@ class RecommendationSummaryOut(BaseModel):
     bookmarked_count: int
 
 
+class ConnectedProfileOut(BaseModel):
+    username: str | None = None
+    display_name: str | None = None
+    profile_image: str | None = None
+    follower_count: int = 0
+    following_count: int = 0
+    media_count: int = 0
+
+
 class DashboardOut(BaseModel):
     mock_mode: bool
+    connected_profile: ConnectedProfileOut | None = None
     cleanup_summary: CleanupSummaryOut
     cleanup_accounts: list[CleanupAccountOut]
     follower_accounts: list[CleanupAccountOut] = Field(default_factory=list)

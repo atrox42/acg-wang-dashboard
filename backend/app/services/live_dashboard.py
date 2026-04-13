@@ -875,10 +875,21 @@ def build_live_dashboard_payload(
 
     fallback_followers = connected_account.follower_count if connected_account and connected_account.follower_count is not None else 0
     fallback_following = connected_account.following_count if connected_account and connected_account.following_count is not None else 0
+    connected_profile = None
+    if connected_account is not None:
+        connected_profile = {
+            "username": connected_account.username,
+            "display_name": connected_account.full_name or connected_account.username,
+            "profile_image": connected_metadata.get("profile_picture_url") or "",
+            "follower_count": int(fallback_followers or 0),
+            "following_count": int(fallback_following or 0),
+            "media_count": int(connected_media_count or 0),
+        }
 
     return {
         "mock_mode": False,
         "days": days,
+        "connected_profile": connected_profile,
         "cleanup_summary": {
             "imported_followers": len(follower_accounts) or fallback_followers,
             "imported_following": len(following_accounts) or fallback_following,

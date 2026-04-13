@@ -67,8 +67,18 @@ export interface RecommendationSummary {
   bookmarkedCount: number;
 }
 
+export interface ConnectedProfile {
+  username?: string;
+  displayName?: string;
+  profileImage?: string;
+  followerCount: number;
+  followingCount: number;
+  mediaCount: number;
+}
+
 export interface DashboardPayload {
   mockMode: boolean;
+  connectedProfile?: ConnectedProfile | null;
   cleanupSummary: CleanupSummary;
   cleanupAccounts: CleanupAccount[];
   followerAccounts: CleanupAccount[];

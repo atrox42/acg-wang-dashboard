@@ -34,9 +34,20 @@ function normalizeCleanupList(payload: Record<string, unknown>, key: string) {
 function normalizeDashboardPayload(payload: Record<string, unknown>): DashboardPayload {
   const cleanupSummary = payload.cleanup_summary as Record<string, number>;
   const recommendationSummary = payload.recommendation_summary as Record<string, number>;
+  const connectedProfile = payload.connected_profile as Record<string, unknown> | null | undefined;
 
   return {
     mockMode: Boolean(payload.mock_mode),
+    connectedProfile: connectedProfile
+      ? {
+          username: connectedProfile.username ? String(connectedProfile.username) : undefined,
+          displayName: connectedProfile.display_name ? String(connectedProfile.display_name) : undefined,
+          profileImage: connectedProfile.profile_image ? String(connectedProfile.profile_image) : undefined,
+          followerCount: Number(connectedProfile.follower_count ?? 0),
+          followingCount: Number(connectedProfile.following_count ?? 0),
+          mediaCount: Number(connectedProfile.media_count ?? 0)
+        }
+      : null,
     cleanupSummary: {
       importedFollowers: cleanupSummary.imported_followers,
       importedFollowing: cleanupSummary.imported_following,

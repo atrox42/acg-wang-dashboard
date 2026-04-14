@@ -2,16 +2,19 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+import hashlib
+import hmac
 import json
 from typing import Iterable
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 from uuid import uuid4
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.entities import (
     Account,
     AccountScore,
@@ -181,6 +184,29 @@ def _load_comment_stats(db: Session, account_ids: Iterable[str], window_days: in
     return stats
 
 
+def _redact_instagram_url(url: str) -> str:
+    parsed = urlsplit(url)
+    safe_query = []
+    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        if key in {"access_token", "appsecret_proof"}:
+            value = "[redacted]"
+        safe_query.append((key, value))
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(safe_query), parsed.fragment))
+
+
+def _build_instagram_query(fields: str, access_token: str | None = None) -> dict[str, str]:
+    query = {"fields": fields}
+    if access_token:
+        query["access_token"] = access_token
+        if settings.instagram_app_secret:
+            query["appsecret_proof"] = hmac.new(
+                settings.instagram_app_secret.encode("utf-8"),
+                access_token.encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
+    return query
+
+
 def _fetch_instagram_profile_candidate(url: str, bearer_token: str | None = None) -> dict | None:
     request = Request(url)
     if bearer_token:
@@ -189,7 +215,33 @@ def _fetch_instagram_profile_candidate(url: str, bearer_token: str | None = None
     try:
         with urlopen(request, timeout=10) as response:
             body = response.read().decode("utf-8")
-    except (HTTPError, URLError, TimeoutError):
+    except HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        print(
+            "Instagram profile fetch failed",
+            json.dumps(
+                {
+                    "url": _redact_instagram_url(url),
+                    "status": error.code,
+                    "body": body[:800],
+                    "bearer": bool(bearer_token),
+                },
+                ensure_ascii=False,
+            ),
+        )
+        return None
+    except (URLError, TimeoutError) as error:
+        print(
+            "Instagram profile fetch failed",
+            json.dumps(
+                {
+                    "url": _redact_instagram_url(url),
+                    "error": str(error),
+                    "bearer": bool(bearer_token),
+                },
+                ensure_ascii=False,
+            ),
+        )
         return None
 
     try:
@@ -212,13 +264,13 @@ def _normalize_instagram_profile_payload(payload: dict | None) -> dict | None:
 
 
 def _try_fetch_instagram_profile(endpoint: str, fields: str, access_token: str) -> dict | None:
-    query_url = f"{endpoint}?{urlencode({'fields': fields, 'access_token': access_token})}"
+    query_url = f"{endpoint}?{urlencode(_build_instagram_query(fields, access_token))}"
     direct_payload = _fetch_instagram_profile_candidate(query_url)
     normalized_direct_payload = _normalize_instagram_profile_payload(direct_payload)
     if normalized_direct_payload and not normalized_direct_payload.get("error"):
         return normalized_direct_payload
 
-    bearer_url = f"{endpoint}?{urlencode({'fields': fields})}"
+    bearer_url = f"{endpoint}?{urlencode(_build_instagram_query(fields))}"
     bearer_payload = _fetch_instagram_profile_candidate(bearer_url, bearer_token=access_token)
     normalized_bearer_payload = _normalize_instagram_profile_payload(bearer_payload)
     if normalized_bearer_payload and not normalized_bearer_payload.get("error"):
@@ -232,14 +284,18 @@ def _resolve_instagram_profile(access_token: str, fallback_instagram_id: str | N
     merged: dict = {}
 
     base_candidates = [
-        ("https://graph.instagram.com/me", "user_id,username,name,profile_picture_url,followers_count,follows_count,media_count"),
-        ("https://graph.instagram.com/v23.0/me", "user_id,username,name,profile_picture_url,followers_count,follows_count,media_count"),
-        ("https://graph.facebook.com/me", "id,username,name,profile_picture_url,followers_count,follows_count,media_count"),
-        ("https://graph.facebook.com/v23.0/me", "id,username,name,profile_picture_url,followers_count,follows_count,media_count"),
-        ("https://graph.instagram.com/me", "username,media_count"),
-        ("https://graph.instagram.com/v23.0/me", "username,media_count"),
-        ("https://graph.facebook.com/me", "username,media_count"),
-        ("https://graph.facebook.com/v23.0/me", "username,media_count"),
+        ("https://graph.instagram.com/me", "user_id,username"),
+        ("https://graph.instagram.com/v23.0/me", "user_id,username"),
+        ("https://graph.facebook.com/me", "id,username"),
+        ("https://graph.facebook.com/v23.0/me", "id,username"),
+        ("https://graph.instagram.com/me", "username"),
+        ("https://graph.instagram.com/v23.0/me", "username"),
+        ("https://graph.facebook.com/me", "username"),
+        ("https://graph.facebook.com/v23.0/me", "username"),
+        ("https://graph.instagram.com/me", "user_id"),
+        ("https://graph.instagram.com/v23.0/me", "user_id"),
+        ("https://graph.facebook.com/me", "id"),
+        ("https://graph.facebook.com/v23.0/me", "id"),
     ]
 
     for endpoint, fields in base_candidates:
@@ -247,12 +303,8 @@ def _resolve_instagram_profile(access_token: str, fallback_instagram_id: str | N
         if not payload:
             continue
         merged = {**merged, **payload}
-        if merged.get("username") and (
-            isinstance(merged.get("followers_count"), int)
-            or isinstance(merged.get("follows_count"), int)
-            or isinstance(merged.get("media_count"), int)
-        ):
-            return merged
+        if merged.get("username"):
+            break
 
     node_ids = []
     for candidate in [merged.get("user_id"), merged.get("id"), fallback_value]:
@@ -264,17 +316,47 @@ def _resolve_instagram_profile(access_token: str, fallback_instagram_id: str | N
 
     for node_id in node_ids:
         for endpoint, fields in [
-            (f"https://graph.instagram.com/{node_id}", "username,media_count"),
-            (f"https://graph.instagram.com/v23.0/{node_id}", "username,media_count"),
-            (f"https://graph.facebook.com/{node_id}", "username,followers_count,follows_count,media_count"),
-            (f"https://graph.facebook.com/v23.0/{node_id}", "username,followers_count,follows_count,media_count"),
+            (f"https://graph.instagram.com/{node_id}", "username"),
+            (f"https://graph.instagram.com/v23.0/{node_id}", "username"),
+            (f"https://graph.facebook.com/{node_id}", "username"),
+            (f"https://graph.facebook.com/v23.0/{node_id}", "username"),
         ]:
             payload = _try_fetch_instagram_profile(endpoint, fields, access_token)
             if not payload:
                 continue
             merged = {**merged, **payload}
             if merged.get("username"):
-                return merged
+                break
+        if merged.get("username"):
+            break
+
+    metric_candidates = [
+        ("https://graph.instagram.com/me", "media_count"),
+        ("https://graph.instagram.com/v23.0/me", "media_count"),
+        ("https://graph.facebook.com/me", "followers_count,follows_count,media_count"),
+        ("https://graph.facebook.com/v23.0/me", "followers_count,follows_count,media_count"),
+    ]
+    for node_id in node_ids:
+        metric_candidates.extend(
+            [
+                (f"https://graph.instagram.com/{node_id}", "media_count"),
+                (f"https://graph.instagram.com/v23.0/{node_id}", "media_count"),
+                (f"https://graph.facebook.com/{node_id}", "followers_count,follows_count,media_count"),
+                (f"https://graph.facebook.com/v23.0/{node_id}", "followers_count,follows_count,media_count"),
+            ]
+        )
+
+    for endpoint, fields in metric_candidates:
+        payload = _try_fetch_instagram_profile(endpoint, fields, access_token)
+        if not payload:
+            continue
+        merged = {**merged, **payload}
+        if (
+            isinstance(merged.get("followers_count"), int)
+            or isinstance(merged.get("follows_count"), int)
+            or isinstance(merged.get("media_count"), int)
+        ):
+            break
 
     return merged or None
 
@@ -287,10 +369,14 @@ def _refresh_connected_account_from_token(
     instagram_user_id: str | None,
 ) -> None:
     profile = _resolve_instagram_profile(access_token, instagram_user_id)
+    metadata = account.metadata_json or {}
     if not profile:
+        metadata["last_live_refresh_error"] = "profile_lookup_failed"
+        metadata["last_live_refresh_at"] = datetime.utcnow().isoformat()
+        account.metadata_json = metadata
+        account.updated_at = datetime.utcnow()
         return
 
-    metadata = account.metadata_json or {}
     resolved_username = str(profile.get("username") or "").strip().lower().lstrip("@")
     if resolved_username:
         existing_account = db.execute(
@@ -312,6 +398,7 @@ def _refresh_connected_account_from_token(
         metadata["profile_picture_url"] = str(profile["profile_picture_url"]).strip()
 
     metadata["last_live_refresh_at"] = datetime.utcnow().isoformat()
+    metadata.pop("last_live_refresh_error", None)
     account.metadata_json = metadata
     account.updated_at = datetime.utcnow()
 

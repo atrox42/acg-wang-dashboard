@@ -14,6 +14,13 @@ import {
 interface InstagramTokenResponse {
   access_token?: string;
   user_id?: number | string;
+  expires_in?: number;
+  error_message?: string;
+}
+
+interface InstagramLongLivedTokenResponse {
+  access_token?: string;
+  expires_in?: number;
   error_message?: string;
 }
 
@@ -124,6 +131,34 @@ async function tryFetchInstagramProfile(url: URL): Promise<InstagramProfileRespo
   const bearerUrl = new URL(url.toString());
   bearerUrl.searchParams.delete("access_token");
   return fetchInstagramProfileCandidate(bearerUrl, token);
+}
+
+async function exchangeForLongLivedToken(
+  accessToken: string,
+  clientSecret: string
+): Promise<InstagramLongLivedTokenResponse | null> {
+  try {
+    const url = new URL("https://graph.instagram.com/access_token");
+    url.searchParams.set("grant_type", "ig_exchange_token");
+    url.searchParams.set("client_secret", clientSecret);
+    url.searchParams.set("access_token", accessToken);
+
+    const tokenResponse = await fetch(url.toString(), { cache: "no-store" });
+    if (!tokenResponse.ok) {
+      const body = await tokenResponse.text();
+      console.error("Instagram long-lived token exchange failed", {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        body
+      });
+      return null;
+    }
+
+    return (await tokenResponse.json()) as InstagramLongLivedTokenResponse;
+  } catch (error) {
+    console.error("Instagram long-lived token exchange threw", error);
+    return null;
+  }
 }
 
 async function resolveInstagramProfile(accessToken: string, fallbackInstagramId: string) {
@@ -363,6 +398,9 @@ export async function GET(request: Request) {
     return redirectToLogin("oauth", config.redirectUri);
   }
 
+  const longLivedPayload = await exchangeForLongLivedToken(tokenPayload.access_token, config.appSecret);
+  const effectiveToken = longLivedPayload?.access_token || tokenPayload.access_token;
+
   const fallbackInstagramId = String(tokenPayload.user_id || "");
   if (!fallbackInstagramId) {
     return redirectToLogin("profile", config.redirectUri, "Missing Instagram user id in token response");
@@ -371,12 +409,12 @@ export async function GET(request: Request) {
   // Instagram Login is already proving account ownership here. If profile lookup
   // fails for a given token shape, still let the user into the dashboard with a
   // stable placeholder handle derived from the Instagram user id.
-  const profile = await resolveInstagramProfile(tokenPayload.access_token, fallbackInstagramId);
+  const profile = await resolveInstagramProfile(effectiveToken, fallbackInstagramId);
   const profileId = String(profile?.user_id || profile?.id || fallbackInstagramId);
   const metricProfileIds = Array.from(
     new Set([profile?.user_id, profile?.id, fallbackInstagramId].filter(Boolean).map((value) => String(value)))
   );
-  const metrics = await resolveInstagramMetrics(tokenPayload.access_token, metricProfileIds);
+  const metrics = await resolveInstagramMetrics(effectiveToken, metricProfileIds);
 
   const resolvedUsername = profile?.username || `instagram-${fallbackInstagramId}`;
 
@@ -397,7 +435,7 @@ export async function GET(request: Request) {
     followerCount: metrics?.followers_count,
     followingCount: metrics?.follows_count,
     mediaCount: metrics?.media_count ?? profile?.media_count,
-    accessToken: tokenPayload.access_token
+    accessToken: effectiveToken
   });
 
   cookies().set({

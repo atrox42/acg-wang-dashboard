@@ -692,9 +692,30 @@ def sync_connected_profile(
     normalized_username = username.strip().lower().lstrip("@")
     if not normalized_username:
         raise ValueError("username is required")
+    normalized_instagram_user_id = (
+        str(instagram_user_id).strip()
+        if instagram_user_id is not None and str(instagram_user_id).strip()
+        else None
+    )
 
     now = datetime.utcnow()
-    account = db.execute(select(Account).where(Account.username == normalized_username)).scalar_one_or_none()
+    account = None
+    if normalized_instagram_user_id:
+        accounts = (
+            db.execute(select(Account).where(Account.metadata_json.is_not(None)))
+            .scalars()
+            .all()
+        )
+        for existing_account in accounts:
+            metadata = existing_account.metadata_json or {}
+            if str(metadata.get("instagram_user_id") or "").strip() == normalized_instagram_user_id:
+                account = existing_account
+                break
+
+    if account is None:
+        account = db.execute(
+            select(Account).where(Account.username == normalized_username)
+        ).scalar_one_or_none()
     if account is None:
         account = Account(
             id=_new_id("acct"),
@@ -713,7 +734,14 @@ def sync_connected_profile(
     if access_token:
         metadata["instagram_access_token"] = access_token
 
-    account.full_name = full_name or account.full_name or normalized_username
+    if not normalized_username.startswith("instagram-"):
+        existing_username_account = db.execute(
+            select(Account).where(Account.username == normalized_username)
+        ).scalar_one_or_none()
+        if existing_username_account is None or existing_username_account.id == account.id:
+            account.username = normalized_username
+
+    account.full_name = full_name or account.full_name or account.username or normalized_username
     if follower_count is not None:
         account.follower_count = int(follower_count)
     if following_count is not None:
@@ -754,25 +782,27 @@ def _find_connected_account(
     instagram_user_id: str | None = None,
 ) -> Account | None:
     normalized_username = username.strip().lower().lstrip("@") if username else None
-    if normalized_username:
-        account = db.execute(
-            select(Account).where(Account.username == normalized_username)
-        ).scalar_one_or_none()
-        if account is not None:
-            return account
-
     normalized_instagram_user_id = (
         str(instagram_user_id).strip()
         if instagram_user_id is not None and str(instagram_user_id).strip()
         else None
     )
-    if not normalized_instagram_user_id:
-        return None
+    if normalized_instagram_user_id:
+        accounts = (
+            db.execute(select(Account).where(Account.metadata_json.is_not(None)))
+            .scalars()
+            .all()
+        )
+        for account in accounts:
+            metadata = account.metadata_json or {}
+            if str(metadata.get("instagram_user_id") or "").strip() == normalized_instagram_user_id:
+                return account
 
-    accounts = db.execute(select(Account).where(Account.metadata_json.is_not(None))).scalars().all()
-    for account in accounts:
-        metadata = account.metadata_json or {}
-        if str(metadata.get("instagram_user_id") or "").strip() == normalized_instagram_user_id:
+    if normalized_username:
+        account = db.execute(
+            select(Account).where(Account.username == normalized_username)
+        ).scalar_one_or_none()
+        if account is not None:
             return account
 
     return None
